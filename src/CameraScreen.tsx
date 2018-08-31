@@ -1,16 +1,24 @@
-import { Camera, Permissions } from "expo";
-import { GLSL, Node, Shaders } from "gl-react";
-import * as GLView from "gl-react-expo";
-import * as React from "react";
-import { Component } from "react";
+import { Camera, Permissions, FileSystem } from 'expo'
+import { GLSL, Node, Shaders } from 'gl-react'
+import * as GLView from 'gl-react-expo'
+const Dropbox = require('dropbox').Dropbox
+
+const dbx = new Dropbox({
+  accessToken:
+    'F9G1jrnCvJ0AAAAAAAAE-NQBkQDS1HiGPGDIAhc-wW0hgJ37HQ7hbSpqmQTQAwDF',
+    fetch: fetch
+})
+import * as React from 'react'
+import { Component } from 'react'
+import { Image, Text, TouchableOpacity, View } from 'react-native'
 import {
   Animated,
   ActivityIndicator,
   Alert,
   Image,
   Text,
-  TouchableOpacity,
   View,
+  TouchableOpacity,
   Easing
 } from "react-native";
 
@@ -89,16 +97,43 @@ export class CameraScreen extends Component<{}, State> {
         target: Camera2.Constants.CaptureTarget.temp
       })
       .then(data => this.setState({ path: data.path }))
-      .catch(err => console.log(err));
-  };
+      .catch(err => console.log(err))
+  }
+  private takePicture = async () => {
+    const photo = await this._camera.takePictureAsync({base64: true, quality: 0.1});
 
+    const filename = Date.now() + '.jpg'
+    /*
+    fetch("https://content.dropboxapi.com/2/files/upload", {
+      body: JSON.stringify(photo),
+      headers: {
+        Authorization: "Bearer F9G1jrnCvJ0AAAAAAAAE-NQBkQDS1HiGPGDIAhc-wW0hgJ37HQ7hbSpqmQTQAwDF",
+        "Content-Type": "application/octet-stream",
+        "Dropbox-Api-Arg": "{\"path\":\"/"+filename+"\"}"
+      },
+      method: "POST"
+    })
+    */
+   console.log(photo.base64.substring(0,100))
+    dbx.filesUpload({
+      path: "/" + filename,
+      //contents: JSON.stringify(photo)
+      //contents: "data:image/jpeg;base64," + photo.base64
+      contents: photo.base64
+
+    });
+    
+
+  }
   private start() {
     this._timer = setInterval(() => this.refreshPic(), 5);
   }
 
   public async componentWillMount() {
-    const { status } = await Permissions.askAsync(Permissions.CAMERA);
-
+    const { status } = await Permissions.askAsync(Permissions.CAMERA)
+    FileSystem.makeDirectoryAsync(FileSystem.documentDirectory + 'photos').catch(e => {
+      console.log(e, 'Directory exists');
+    });
     this.setState({
       hasPermissionToCamera: status === "granted"
     });
@@ -150,6 +185,9 @@ export class CameraScreen extends Component<{}, State> {
               style={{ width: "100%", height: "100%", position: "absolute" }}
               source={{ uri: "https://i.imgur.com/qTfJq6h.png" }}
             />
+            <View style={{position: 'absolute', bottom: 0, width: '100%', height: 65, justifyContent: 'center', alignItems: 'center'}}>
+              <TouchableOpacity onPress={() => this.takePicture()} style={{width: 160, height: 65, position: 'absolute' }}/>
+            </View>
             <TouchableOpacity
               onPress={() => this.toggleCameraType()}
               style={{
