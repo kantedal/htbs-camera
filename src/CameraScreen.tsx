@@ -11,6 +11,7 @@ const gui = require('./gui.png')
 
 interface State {
   cameraType: string // TODO Camera.Constants.Type,
+  flashActive: boolean
   hasPermissionToCamera: boolean | undefined
   path: string
 }
@@ -44,6 +45,7 @@ export class CameraScreen extends Component<{}, State> {
 
     this.state = {
       cameraType: 'back',
+      flashActive: false,
       hasPermissionToCamera: undefined,
       path: '',
     }
@@ -79,12 +81,15 @@ export class CameraScreen extends Component<{}, State> {
       return <Text>No access to the camera.</Text>
     }
 
+    const { FlashMode } = Camera.Constants
+
     return (
       <View style={{ flex: 1 }}>
         <Camera2
           style={{ flex: 1 }}
           type={this.state.cameraType}
           ref={cam => this._camera = cam}
+          flashMode={this.state.flashActive ? FlashMode.on : FlashMode.off}
         // captureQuality={Camera2.Constants.CaptureQuality['720p']}
         // aspect={Camera2.Constants.Aspect.fill}
         >
@@ -111,6 +116,25 @@ export class CameraScreen extends Component<{}, State> {
                 {' '}Flip{' '}
               </Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => this.toggleCameraFlash()}
+              style={{
+                alignItems: 'center',
+                alignSelf: 'flex-end',
+                flex: 0.2
+              }}
+            >
+              <Text
+                style={{
+                  color: 'white',
+                  fontSize: 18,
+                  marginBottom: 10
+                  // width: '40%'
+                }}
+              >
+                {' '}{this.state.flashActive ? 'Flash on' : 'Flash off'}{' '}
+              </Text>
+            </TouchableOpacity>
           </View>
         </Camera2>
         {/* <GLView.Surface style={{ width: 100, height: 100 }}>
@@ -130,5 +154,9 @@ export class CameraScreen extends Component<{}, State> {
         ? 'front'
         : 'back'
     })
+  }
+
+  private toggleCameraFlash() {
+    this.setState({ flashActive: !this.state.flashActive })
   }
 }
