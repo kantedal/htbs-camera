@@ -5,6 +5,7 @@ import * as React from "react";
 import { Component } from "react";
 import {
   Animated,
+  ActivityIndicator,
   Alert,
   Image,
   Text,
@@ -18,11 +19,14 @@ const Camera2: any = Camera;
 const gui = require("./gui.png");
 
 interface State {
+  analyzingPerson: boolean
+  businessAssociateText: string
   cameraType: string; // TODO Camera.Constants.Type,
   hasPermissionToCamera: boolean | undefined;
   path: string;
   flashActive: boolean;
   spinDegree: any;
+  showBusinessAssociateLoading: boolean
 }
 
 const shaders = Shaders.create({
@@ -53,11 +57,14 @@ export class CameraScreen extends Component<{}, State> {
     super(props, context);
 
     this.state = {
+      analyzingPerson: false,
+      businessAssociateText: '',
       cameraType: "back",
       flashActive: false,
       hasPermissionToCamera: undefined,
       path: "",
-      spinDegree: new Animated.Value(0)
+      spinDegree: new Animated.Value(0),
+      showBusinessAssociateLoading: false
     };
   }
 
@@ -126,10 +133,11 @@ export class CameraScreen extends Component<{}, State> {
         <Camera2
           style={{ flex: 1 }}
           type={this.state.cameraType}
-          ref={cam => (this._camera = cam)}
+          ref={cam => this._camera = cam}
+          onFacesDetected={() => this.analyzePerson()}
           flashMode={this.state.flashActive ? FlashMode.on : FlashMode.off}
-          // captureQuality={Camera2.Constants.CaptureQuality['720p']}
-          // aspect={Camera2.Constants.Aspect.fill}
+        // captureQuality={Camera2.Constants.CaptureQuality['720p']}
+        // aspect={Camera2.Constants.Aspect.fill}
         >
           <View
             style={{
@@ -180,6 +188,31 @@ export class CameraScreen extends Component<{}, State> {
                 {this.state.flashActive ? "Flash on" : "Flash off"}{" "}
               </Text>
             </TouchableOpacity>
+            <View>
+              {this.state.showBusinessAssociateLoading ?
+                <ActivityIndicator
+                  size="large"
+                  color="#0000ff"
+                  style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginTop: '50%'
+                  }}
+                /> : null}
+              <Text
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginTop: '50%',
+                  color: 'white',
+                  fontSize: 14
+                }}
+              >
+                {' '}{this.state.businessAssociateText.length > 0 ? this.state.businessAssociateText : null}{' '}
+              </Text>
+            </View>
           </View>
         </Camera2>
         {/* <GLView.Surface style={{ width: 100, height: 100 }}>
@@ -216,6 +249,37 @@ export class CameraScreen extends Component<{}, State> {
     }
   }
 
+  private analyzePerson() {
+    if (this.state.analyzingPerson) {
+      return
+    }
+
+    this.setState({ analyzingPerson: true })
+
+    const poll = Math.random()
+    let trueBusinessAssociate = false
+    if (poll < 0.5) {
+      trueBusinessAssociate = true
+    }
+
+    const businessAssociateCallback = () => {
+      setTimeout(() => {
+        this.setState({ businessAssociateText: '', analyzingPerson: false })
+      }, 3000)
+    }
+
+    this.setState({ showBusinessAssociateLoading: true })
+    setTimeout(() => {
+      this.setState({ showBusinessAssociateLoading: false })
+
+      if (trueBusinessAssociate) {
+        this.setState({ businessAssociateText: 'True businees logic associate!' }, businessAssociateCallback)
+      } else {
+        this.setState({ businessAssociateText: 'Not a logical business associate' }, businessAssociateCallback)
+      }
+    }, 3000)
+  }
+
   private toggleCameraType() {
     this.flipUi();
     setTimeout(() => {
@@ -228,6 +292,8 @@ export class CameraScreen extends Component<{}, State> {
         cameraType: this.state.cameraType === "back" ? "front" : "back"
       });
     }, 1000);
+
+    this.getCustomars();
   }
 
   private toggleCameraFlash() {
