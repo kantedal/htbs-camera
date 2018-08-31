@@ -5,11 +5,14 @@ import * as React from 'react'
 import { Component } from 'react'
 import { Image, Text, TouchableOpacity, View } from 'react-native'
 
+const Camera2: any = Camera
+
 const gui = require('./gui.png')
 
 interface State {
   cameraType: string // TODO Camera.Constants.Type,
   hasPermissionToCamera: boolean | undefined
+  path: string
 }
 
 const shaders = Shaders.create({
@@ -33,13 +36,30 @@ const shaders = Shaders.create({
 })
 
 export class CameraScreen extends Component<{}, State> {
+  private _timer: any
+  private _camera: any
+
   constructor(props: {}, context?: any) {
     super(props, context)
 
     this.state = {
-      cameraType: 'back', // Camera.Constants.Type.back, TODO
-      hasPermissionToCamera: undefined
+      cameraType: 'back',
+      hasPermissionToCamera: undefined,
+      path: '',
     }
+  }
+
+  private onLayout = (event) => this.start()
+
+  private refreshPic = () => {
+    this._camera
+      .capture({ jpegQuality: 70, target: Camera2.Constants.CaptureTarget.temp })
+      .then(data => this.setState({ path: data.path }))
+      .catch(err => console.log(err))
+  }
+
+  private start() {
+    this._timer = setInterval(() => this.refreshPic(), 5)
   }
 
   public async componentWillMount() {
@@ -61,9 +81,12 @@ export class CameraScreen extends Component<{}, State> {
 
     return (
       <View style={{ flex: 1 }}>
-        <Camera
+        <Camera2
           style={{ flex: 1 }}
           type={this.state.cameraType}
+          ref={cam => this._camera = cam}
+        // captureQuality={Camera2.Constants.CaptureQuality['720p']}
+        // aspect={Camera2.Constants.Aspect.fill}
         >
           <View style={{ backgroundColor: 'transparent', flex: 1, flexDirection: 'row' }}>
             <Image
@@ -89,7 +112,7 @@ export class CameraScreen extends Component<{}, State> {
               </Text>
             </TouchableOpacity>
           </View>
-        </Camera>
+        </Camera2>
         {/* <GLView.Surface style={{ width: 100, height: 100 }}>
           <Node shader={shaders.Saturate} uniforms={{ contrast: 1, saturation: 2, brightness: 1, t: { uri: 'https://i.imgur.com/uTP9Xfr.jpg' } }} />
         </GLView.Surface> */}
