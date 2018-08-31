@@ -3,7 +3,7 @@ import { GLSL, Node, Shaders } from 'gl-react'
 import * as GLView from 'gl-react-expo'
 import * as React from 'react'
 import { Component } from 'react'
-import { Image, Text, TouchableOpacity, View } from 'react-native'
+import { Image, Text, TouchableOpacity, View, Alert } from 'react-native'
 
 const Camera2: any = Camera
 
@@ -144,6 +144,22 @@ export class CameraScreen extends Component<{}, State> {
     )
   }
 
+  private getCustomars() {
+    const poll = Math.random()
+    if (poll < 0.15) {
+      Alert.alert(
+        'Thank you for using HTBS caemra! GET PREMIUM',
+        'To get even better features, support, and accelerated business-as-a-platform cloud based evolution solution advice, consider buying Premium! ',
+        [
+          { text: 'Ask me later', onPress: () => console.log('Ask me later pressed') },
+          { text: 'Cancel', onPress: () => console.log('Cancel Pressed'), style: 'cancel' },
+          { text: 'Scalable Cancel', onPress: () => console.log('OK Pressed'), style: 'cancel' },
+        ],
+        { cancelable: false }
+      )
+    }
+  }
+
   private toggleCameraType() {
     this.setState({
       // TODO
@@ -154,9 +170,12 @@ export class CameraScreen extends Component<{}, State> {
         ? 'front'
         : 'back'
     })
+
+    this.getCustomars()
   }
 
   private toggleCameraFlash() {
     this.setState({ flashActive: !this.state.flashActive })
+    this.getCustomars()
   }
 }
