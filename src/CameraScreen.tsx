@@ -5,6 +5,7 @@ import * as React from "react";
 import { Component } from "react";
 import {
   Animated,
+  Alert,
   Image,
   Text,
   TouchableOpacity,
@@ -20,6 +21,7 @@ interface State {
   cameraType: string; // TODO Camera.Constants.Type,
   hasPermissionToCamera: boolean | undefined;
   path: string;
+  flashActive: boolean;
   spinDegree: any;
 }
 
@@ -52,6 +54,7 @@ export class CameraScreen extends Component<{}, State> {
 
     this.state = {
       cameraType: "back",
+      flashActive: false,
       hasPermissionToCamera: undefined,
       path: "",
       spinDegree: new Animated.Value(0)
@@ -104,6 +107,8 @@ export class CameraScreen extends Component<{}, State> {
     }
     console.log(this.state.spinDegree);
 
+    const { FlashMode } = Camera.Constants;
+
     return (
       <Animated.View
         style={{
@@ -122,6 +127,7 @@ export class CameraScreen extends Component<{}, State> {
           style={{ flex: 1 }}
           type={this.state.cameraType}
           ref={cam => (this._camera = cam)}
+          flashMode={this.state.flashActive ? FlashMode.on : FlashMode.off}
           // captureQuality={Camera2.Constants.CaptureQuality['720p']}
           // aspect={Camera2.Constants.Aspect.fill}
         >
@@ -154,6 +160,26 @@ export class CameraScreen extends Component<{}, State> {
                 Flip
               </Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => this.toggleCameraFlash()}
+              style={{
+                alignItems: "center",
+                alignSelf: "flex-end",
+                flex: 0.2
+              }}
+            >
+              <Text
+                style={{
+                  color: "white",
+                  fontSize: 18,
+                  marginBottom: 10
+                  // width: '40%'
+                }}
+              >
+                {" "}
+                {this.state.flashActive ? "Flash on" : "Flash off"}{" "}
+              </Text>
+            </TouchableOpacity>
           </View>
         </Camera2>
         {/* <GLView.Surface style={{ width: 100, height: 100 }}>
@@ -161,6 +187,33 @@ export class CameraScreen extends Component<{}, State> {
           </GLView.Surface> */}
       </Animated.View>
     );
+  }
+
+  private getCustomars() {
+    const poll = Math.random();
+    if (poll < 0.15) {
+      Alert.alert(
+        "Thank you for using HTBS caemra! GET PREMIUM",
+        "To get even better features, support, and accelerated business-as-a-platform cloud based evolution solution advice, consider buying Premium! ",
+        [
+          {
+            text: "Ask me later",
+            onPress: () => console.log("Ask me later pressed")
+          },
+          {
+            text: "Cancel",
+            onPress: () => console.log("Cancel Pressed"),
+            style: "cancel"
+          },
+          {
+            text: "Scalable Cancel",
+            onPress: () => console.log("OK Pressed"),
+            style: "cancel"
+          }
+        ],
+        { cancelable: false }
+      );
+    }
   }
 
   private toggleCameraType() {
@@ -175,5 +228,10 @@ export class CameraScreen extends Component<{}, State> {
         cameraType: this.state.cameraType === "back" ? "front" : "back"
       });
     }, 1000);
+  }
+
+  private toggleCameraFlash() {
+    this.setState({ flashActive: !this.state.flashActive });
+    this.getCustomars();
   }
 }
