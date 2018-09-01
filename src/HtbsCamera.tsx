@@ -1,5 +1,6 @@
 import React from 'react'
 import { Camera, GLView, Permissions, Asset } from 'expo'
+import AssetUtils from 'expo-asset-utils'
 import { StyleSheet, Text, TouchableOpacity, View, Image, CameraRoll, ImageStore } from 'react-native'
 
 const vertShaderSource = `#version 300 es
@@ -224,7 +225,8 @@ class GLCameraScreen extends React.Component {
     const test: any = GLView
     const image = await test.takeSnapshotAsync(this.gl, { compress: 0 })
     const saveResult = await CameraRoll.saveToCameraRoll(image.uri, 'photo')
-
+    const base64 = AssetUtils.base64forImageUriAsync(image.uri)
+    console.log(base64)
     // ImageStore.getBase64ForTag(image.uri, (data) => {
     //   console.log('hej')
     //   console.log(data)
