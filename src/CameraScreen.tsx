@@ -5,8 +5,6 @@ import * as React from 'react'
 import { Component } from 'react'
 import { Image, Text, TouchableOpacity, View } from 'react-native'
 
-const Camera2: any = Camera
-
 const gui = require('./gui.png')
 
 interface State {
@@ -45,21 +43,28 @@ export class CameraScreen extends Component<{}, State> {
     this.state = {
       cameraType: 'back',
       hasPermissionToCamera: undefined,
-      path: '',
+      path: null,
     }
   }
 
   private onLayout = (event) => this.start()
 
-  private refreshPic = () => {
-    this._camera
-      .capture({ jpegQuality: 70, target: Camera2.Constants.CaptureTarget.temp })
-      .then(data => this.setState({ path: data.path }))
-      .catch(err => console.log(err))
+  private refreshPic = async () => {
+    if (this._camera) {
+      try {
+        const photo = await this._camera.takePictureAsync({ quality: 0.05, base64: false, exif: false })
+        console.log(photo.uri)
+        this.setState({ path: photo.uri })
+      } catch (e) {
+        console.log(e)
+      }
+    }
+
+    requestAnimationFrame(this.refreshPic)
   }
 
-  private start() {
-    this._timer = setInterval(() => this.refreshPic(), 5)
+  private async start() {
+    setTimeout(() => this.refreshPic(), 100)
   }
 
   public async componentWillMount() {
@@ -80,15 +85,20 @@ export class CameraScreen extends Component<{}, State> {
     }
 
     return (
-      <View style={{ flex: 1 }}>
-        <Camera2
+      <View style={{ flex: 1 }} onLayout={this.onLayout}>
+        <Camera
           style={{ flex: 1 }}
           type={this.state.cameraType}
           ref={cam => this._camera = cam}
-        // captureQuality={Camera2.Constants.CaptureQuality['720p']}
-        // aspect={Camera2.Constants.Aspect.fill}
+        // captureQuality={Camera.Constants.CaptureQuality['720p']}
+        // aspect={Camera.Constants.Aspect.fill}
         >
           <View style={{ backgroundColor: 'transparent', flex: 1, flexDirection: 'row' }}>
+            {this.state.path != null && (
+              <GLView.Surface style={{ position: 'absolute', width: '100%', height: '100%' }}>
+                <Node shader={shaders.Saturate} uniforms={{ contrast: 1, saturation: 2, brightness: 1, t: { uri: this.state.path } }} />
+              </GLView.Surface>
+            )}
             <Image
               style={{ width: '100%', height: '100%', position: 'absolute' }}
               source={{ uri: 'https://i.imgur.com/qTfJq6h.png' }}
@@ -112,10 +122,7 @@ export class CameraScreen extends Component<{}, State> {
               </Text>
             </TouchableOpacity>
           </View>
-        </Camera2>
-        {/* <GLView.Surface style={{ width: 100, height: 100 }}>
-          <Node shader={shaders.Saturate} uniforms={{ contrast: 1, saturation: 2, brightness: 1, t: { uri: 'https://i.imgur.com/uTP9Xfr.jpg' } }} />
-        </GLView.Surface> */}
+        </Camera>
       </View>
     )
   }
