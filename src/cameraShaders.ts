@@ -14,6 +14,7 @@ export const cameraFrag = `#version 300 es
   uniform sampler2D htbsLogo;
   uniform sampler2D cameraTexture;
   uniform float time;
+  uniform float zoom;
   in vec2 uv;
   out vec4 fragColor;
 
@@ -78,7 +79,8 @@ export const cameraFrag = `#version 300 es
   void main() {
     float width = 300.0;
     float height = 300.0;
-    vec2 newUv = vec2(floor(uv.x * width) / width, floor(uv.y * height) / height); 
+    vec2 zoomUv = vec2(zoom * (uv.x - 0.5) + 0.5, zoom * (uv.y - 0.5 ) + 0.5);
+    vec2 newUv = vec2(floor(zoomUv.x * width) / width, floor(zoomUv.y * height) / height); 
 
     float noiseX = snoise(newUv * 1.8 - 20.0 + time * 0.1) * 0.005;
     float noiseY = snoise(newUv * 2.0 + 30.0 + time * 0.1) * 0.002;
