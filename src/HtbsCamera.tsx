@@ -1,7 +1,7 @@
 import React from 'react'
 import { Camera, GLView, Permissions, Asset } from 'expo'
 import AssetUtils from 'expo-asset-utils'
-import { StyleSheet, Text, TouchableOpacity, View, Image, CameraRoll, ImageStore } from 'react-native'
+import { StyleSheet, Text, TouchableOpacity, View, Image, CameraRoll, ImageStore, Alert } from 'react-native'
 import { cameraVert, cameraFrag } from './cameraShaders';
 import PublishToFeedModal from './PublishToFeedModal'
 import { StoryFeed } from './StoryScreen';
@@ -23,7 +23,7 @@ class GLCameraScreen extends React.Component {
   private _time: number = 0.0
   private _logo: any
 
-  state = { zoom: 0, type: Camera.Constants.Type.back, publishModalOpen: false, imgUri: null, storyFeed: false }
+  state = { analyzingPerson: false, zoom: 0, type: Camera.Constants.Type.back, publishModalOpen: false, imgUri: null, storyFeed: false }
 
   componentWillUnmount() {
     cancelAnimationFrame(this._rafID)
@@ -176,6 +176,7 @@ class GLCameraScreen extends React.Component {
     const saveResult = await CameraRoll.saveToCameraRoll(image.uri, 'photo')
     // this.uploadPhotoToStoryFeed(image.uri, 'Sug en fet')
 
+    this.getCustomers()
     this.setState({ publishModalOpen: true, imgUri: image.uri })
 
     this.setState({ cameraRollUri: saveResult })
@@ -197,6 +198,7 @@ class GLCameraScreen extends React.Component {
           ratio='16:9'
           type={this.state.type}
           zoom={this.state.zoom}
+          // onFacesDetected={this.analyzePerson}
           ref={this.ref('camera')}
         />
 
@@ -224,6 +226,64 @@ class GLCameraScreen extends React.Component {
         </TouchableOpacity>
       </View>
     ) : <StoryFeed onExitStoryFeed={() => this.setState({ ...this.state, storyFeed: false })} />
+  }
+
+  private getCustomers() {
+    const poll = Math.random()
+    if (poll < 0.15) {
+      Alert.alert(
+        'Thank you for using HTBS caemra! GET PREMIUM',
+        'To remove watermarks, get even better features, support, and accelerated business-as-a-platform cloud based evolution solution advice, consider buying Premium! ',
+        [
+          {
+            text: 'Ask me later',
+            onPress: () => console.log('Ask me later pressed')
+          },
+          {
+            text: 'Cancel',
+            onPress: () => console.log('Cancel Pressed'),
+            style: 'cancel'
+          },
+          {
+            text: 'Scalable Cancel',
+            onPress: () => console.log('OK Pressed'),
+            style: 'cancel'
+          }
+        ],
+        { cancelable: false }
+      );
+    }
+  }
+
+  private analyzePerson = () => {
+    if (this.state.analyzingPerson) {
+      return
+    }
+
+    this.setState({ analyzingPerson: true })
+
+    const poll = Math.random()
+    let trueBusinessAssociate = false
+    if (poll < 0.5) {
+      trueBusinessAssociate = true
+    }
+
+    const businessAssociateCallback = () => {
+      setTimeout(() => {
+        this.setState({ businessAssociateText: '', analyzingPerson: false })
+      }, 3000)
+    }
+
+    this.setState({ showBusinessAssociateLoading: true })
+    setTimeout(() => {
+      this.setState({ showBusinessAssociateLoading: false })
+
+      if (trueBusinessAssociate) {
+        this.setState({ businessAssociateText: 'True businees logic associate!' }, businessAssociateCallback)
+      } else {
+        this.setState({ businessAssociateText: 'Not a logical business associate' }, businessAssociateCallback)
+      }
+    }, 3000)
   }
 }
 

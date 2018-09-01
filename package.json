@@ -1,7 +1,7 @@
 {
-  "name": "expo-and-typescript",
+  "name": "htbs-camera",
   "version": "0.0.0",
-  "description": "React Native using Expo and TypeScript",
+  "description": "Camera with cloud based feed and revolutionary stabilazation",
   "author": {
     "email": "jan@aagaard.net",
     "name": "Jan Aagaard"

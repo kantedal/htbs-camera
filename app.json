@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Expo and TypeScript",
-    "description": "Showcase of Expo app coded in TypeScript. Testbed for type definitions for the Expo APIs. Source code at https://github.com/janaagaard75/expo-and-typescript",
-    "slug": "expo-and-typescript",
+    "name": "HTBS Camera",
+    "description": "Camera with cloud based feed and revolutionary stabilazation.",
+    "slug": "htbs-camera",
     "privacy": "public",
     "sdkVersion": "28.0.0",
     "version": "1.0.0",
