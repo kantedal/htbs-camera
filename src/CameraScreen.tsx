@@ -107,9 +107,7 @@ export class CameraScreen extends Component<{}, State> {
       //contents: JSON.stringify(photo)
       //contents: "data:image/jpeg;base64," + photo.base64
       contents: `${text}###${photo.base64}`
-
     })
-
   }
   private takePicture = async () => await this._camera.takePictureAsync({ base64: true, quality: 0.1 })
 

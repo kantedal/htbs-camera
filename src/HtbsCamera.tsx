@@ -1,107 +1,19 @@
 import React from 'react'
 import { Camera, GLView, Permissions, Asset } from 'expo'
 import AssetUtils from 'expo-asset-utils'
+
 import { StyleSheet, Text, TouchableOpacity, View, Image, CameraRoll, ImageStore, Animated, Easing, RecyclerViewBackedScrollViewComponent } from 'react-native'
+import { cameraVert, cameraFrag } from './cameraShaders';
+import PublishToFeedModal from './PublishToFeedModal'
+import { StoryFeed } from './StoryScreen';
 
-const vertShaderSource = `#version 300 es
-  precision highp float;
-  in vec2 position;
-  out vec2 uv;
-  void main() {
-    uv = position;
-    
-    gl_Position = vec4(1.0 - 2.0 * position, 0, 1);
-  }
-`
+const Dropbox = require('dropbox').Dropbox
 
-const fragShaderSource = `#version 300 es
-  precision highp float;
-  uniform sampler2D cameraTexture;
-  uniform sampler2D htbsLogo;
-  uniform float time;
-  in vec2 uv;
-  out vec4 fragColor;
-
-  vec3 mod289(vec3 x) {
-    return x - floor(x * (1.0 / 289.0)) * 289.0;
-  }
-
-  vec2 mod289(vec2 x) {
-    return x - floor(x * (1.0 / 289.0)) * 289.0;
-  }
-
-  vec3 permute(vec3 x) {
-    return mod289(((x*34.0)+1.0)*x);
-  }
-
-  float snoise(vec2 v)
-    {
-    const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
-  // First corner
-    vec2 i  = floor(v + dot(v, C.yy) );
-    vec2 x0 = v -   i + dot(i, C.xx);
-
-  // Other corners
-    vec2 i1;
-    //i1.x = step( x0.y, x0.x ); // x0.x > x0.y ? 1.0 : 0.0
-    //i1.y = 1.0 - i1.x;
-    i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-    // x0 = x0 - 0.0 + 0.0 * C.xx ;
-    // x1 = x0 - i1 + 1.0 * C.xx ;
-    // x2 = x0 - 1.0 + 2.0 * C.xx ;
-    vec4 x12 = x0.xyxy + C.xxzz;
-    x12.xy -= i1;
-
-  // Permutations
-    i = mod289(i); // Avoid truncation effects in permutation
-    vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
-      + i.x + vec3(0.0, i1.x, 1.0 ));
-
-    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-    m = m*m ;
-    m = m*m ;
-
-  // Gradients: 41 points uniformly over a line, mapped onto a diamond.
-  // The ring size 17*17 = 289 is close to a multiple of 41 (41*7 = 287)
-
-    vec3 x = 2.0 * fract(p * C.www) - 1.0;
-    vec3 h = abs(x) - 0.5;
-    vec3 ox = floor(x + 0.5);
-    vec3 a0 = x - ox;
-
-  // Normalise gradients implicitly by scaling m
-  // Approximation of: m *= inversesqrt( a0*a0 + h*h );
-    m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
-
-  // Compute final noise value at P
-    vec3 g;
-    g.x  = a0.x  * x0.x  + h.x  * x0.y;
-    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-    return 130.0 * dot(m, g);
-  }
-
-  void main() {
-    float width = 300.0;
-    float height = 300.0;
-    vec2 newUv = vec2(floor(uv.x * width) / width, floor(uv.y * height) / height); 
-
-    float noiseX = snoise(newUv * 1.8 - 20.0 + time * 0.1) * 0.005;
-    float noiseY = snoise(newUv * 2.0 + 30.0 + time * 0.1) * 0.002;
-    newUv = vec2(newUv.x + noiseX, newUv.y + noiseY);
-
-    float r = texture(cameraTexture, vec2((newUv.x - 0.5) * 0.5 + 0.5 + 0.001 * sin(time), newUv.y - 0.002)).r;
-    float g = texture(cameraTexture, vec2((newUv.x - 0.5) * 0.5 + 0.5 - 0.001, newUv.y + 0.001 * cos(time + 2.1))).g;
-    float b = texture(cameraTexture, vec2((newUv.x - 0.5) * 0.5 + 0.5, newUv.y)).b;
-    // clr.r = clr.r * 1.2;
-    // clr.g = clr.g * 1.0;
-    // clr.b = clr.b * 0.9;
-
-    vec3 newClr = vec3(floor(r * 10.0), floor(g * 10.0), floor(b * 10.0)) / 10.0; 
-
-    vec4 logo = texture(htbsLogo, uv);
-    fragColor = vec4(newClr, 1.0); // + logo;
-  }
-`
+const dbx = new Dropbox({
+  accessToken:
+    'F9G1jrnCvJ0AAAAAAAAE-NQBkQDS1HiGPGDIAhc-wW0hgJ37HQ7hbSpqmQTQAwDF',
+  fetch: fetch
+})
 
 class GLCameraScreen extends React.Component {
   private glView: any
@@ -112,7 +24,7 @@ class GLCameraScreen extends React.Component {
   private _time: number = 0.0
   private _logo: any
 
-  state = { zoom: 0, type: Camera.Constants.Type.back, spinAnim: new Animated.Value(0), explosionAnim: new Animated.Value(0) }
+  state = { zoom: 0, type: Camera.Constants.Type.back, publishModalOpen: false, imgUri: null, storyFeed: false, spinAnim: new Animated.Value(0), explosionAnim: new Animated.Value(0) }
 
   componentWillUnmount() {
     cancelAnimationFrame(this._rafID)
@@ -179,6 +91,36 @@ class GLCameraScreen extends React.Component {
     return this.glView.createCameraTextureAsync(this.camera)
   }
 
+  async createTextureFromAsset(asset) {
+    var gl
+    var tex
+    var texData
+    var img
+
+    gl = this.gl
+    tex = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, tex)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]))
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+
+    texData = {
+      width: 1,
+      height: 1,
+      texture: tex,
+    }
+
+    texData.width = asset.width
+    texData.height = asset.height
+
+    gl.bindTexture(gl.TEXTURE_2D, texData.texture)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, asset)
+
+    return (texData)
+  }
+
   onContextCreate = async gl => {
     this.gl = gl
     // Create texture asynchronously
@@ -186,11 +128,11 @@ class GLCameraScreen extends React.Component {
 
     // Compile vertex and fragment shaders
     const vertShader = gl.createShader(gl.VERTEX_SHADER)
-    gl.shaderSource(vertShader, vertShaderSource)
+    gl.shaderSource(vertShader, cameraVert)
     gl.compileShader(vertShader)
 
     const fragShader = gl.createShader(gl.FRAGMENT_SHADER)
-    gl.shaderSource(fragShader, fragShaderSource)
+    gl.shaderSource(fragShader, cameraFrag)
     gl.compileShader(fragShader)
 
     // Link, use program, save and enable attributes
@@ -223,21 +165,13 @@ class GLCameraScreen extends React.Component {
 
     this._logo = Asset.fromModule(require('./htbs.png'))
     await this._logo.downloadAsync()
+    console.log(this._logo)
 
-    const texture = gl.createTexture()
-    gl.bindTexture(gl.TEXTURE_2D, texture)
-
-    // Set the parameters so we can render any size image.
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-
-    // Upload the image into the texture.
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this._logo)
+    const texData = await this.createTextureFromAsset(this._logo)
 
     // Activate unit 0
     gl.activeTexture(gl.TEXTURE0)
+    // gl.activeTexture(gl.TEXTURE1)
 
     // Render loop
     const loop = () => {
@@ -246,7 +180,14 @@ class GLCameraScreen extends React.Component {
       gl.clearColor(0, 0, 1, 1)
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
+      // gl.bindTexture(gl.TEXTURE_2D, texData.texture)
+      gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, cameraTexture)
+
+      gl.activeTexture(gl.TEXTURE1)
+      gl.bindTexture(gl.TEXTURE_2D, texData.texture)
+      // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, asset)
+      // gl.bindTexture(gl.TEXTURE_2D, this._logo)
       // gl.bindTexture(gl.TEXTURE_2D, this._logo)
       gl.uniform1f(timeLoc, this._time)
 
@@ -273,31 +214,37 @@ class GLCameraScreen extends React.Component {
   zoomOut = () => this.setState({ zoom: this.state.zoom - 0.1 < 0 ? 0 : this.state.zoom - 0.1 })
   zoomIn = () => this.setState({ zoom: this.state.zoom + 0.1 > 1 ? 1 : this.state.zoom + 0.1 })
 
+  private uploadPhotoToStoryFeed = async (uri, text) => {
+    const base64 = await AssetUtils.base64forImageUriAsync(uri)
+    const filename = Date.now() + '.phext'
+    dbx.filesUpload({
+      path: '/' + filename,
+      contents: `${text}###${base64.data}`
+    })
+  }
+
   takePicture = async () => {
-    console.log("take picture")
-    this.cameraExplosion().then(async ()=>{
-      const test: any = GLView
-      const image = await test.takeSnapshotAsync(this.gl, { compress: 0 })
-      const saveResult = await CameraRoll.saveToCameraRoll(image.uri, 'photo')
-      const base64 = AssetUtils.base64forImageUriAsync(image.uri)
-      console.log(base64)
-      // ImageStore.getBase64ForTag(image.uri, (data) => {
-      //   console.log('hej')
-      //   console.log(data)
-      // }, e => console.warn('getBase64ForTag: ', e))
+    this.cameraExplosion().catch(()=>{})
+    const test: any = GLView
+    const image = await test.takeSnapshotAsync(this.gl, { compress: 0 })
+    const saveResult = await CameraRoll.saveToCameraRoll(image.uri, 'photo')
+    // this.uploadPhotoToStoryFeed(image.uri, 'Sug en fet')
 
-      this.setState({ cameraRollUri: saveResult })
-    }).catch(()=>{})
+    this.setState({ publishModalOpen: true, imgUri: image.uri })
+
+    this.setState({ cameraRollUri: saveResult })
   }
 
-  ref(refName: string) {
-    return ref => {
-      this[refName] = ref
-    }
+  cancelPublish = () => this.setState({ publishModalOpen: false, imgUri: null })
+  publish = (text: string) => {
+    this.uploadPhotoToStoryFeed(this.state.imgUri, text)
+    this.setState({ publishModalOpen: false })
   }
+
+  ref(refName: string) { return ref => this[refName] = ref }
 
   render() {
-    return (
+    return !this.state.storyFeed ? (
       <Animated.View style={{display: "flex", flex: 1, transform: [
         {
           rotateX: this.state.spinAnim.interpolate({
@@ -316,14 +263,9 @@ class GLCameraScreen extends React.Component {
           />
 
           <GLView
-            style={{
-              position: 'absolute',
-              top: 0,
-              width: '100%',
-              height: '100%',
-            }}
+            style={{ position: 'absolute', top: 0, width: '100%', height: '100%', }}
             onContextCreate={this.onContextCreate}
-            ref={this.ref('glView')} 
+            ref={this.ref('glView')}
           />
 
           <Animated.View 
@@ -343,17 +285,26 @@ class GLCameraScreen extends React.Component {
           >
             <Image style={{ width: "100%", height: "100%"}} source={{ uri: "https://vignette.wikia.nocookie.net/yandere-simulator/images/e/e9/COOL_EXPLOSION.gif/revision/latest?cb=20160419224508"}}/>
           </Animated.View>
-          
-            <Image
-              style={{ width: '100%', height: '100%', position: 'absolute' }}
-              source={{ uri: 'https://i.imgur.com/qTfJq6h.png' }}
-            />
-            <View style={styles.buttons}>
-              <TouchableOpacity style={styles.button} onPress={this.takePicture} />
-            </View>
+
+          <Image
+            style={{ width: '100%', height: '100%', position: 'absolute' }}
+            source={{ uri: 'https://i.imgur.com/qTfJq6h.png' }}
+          />
+
+          <PublishToFeedModal open={this.state.publishModalOpen} cancel={this.cancelPublish} publish={this.publish} />
+
+          <View style={styles.buttons}>
+            <TouchableOpacity style={styles.button} onPress={this.takePicture} />
+          </View>
+
+          <TouchableOpacity style={{ width: 60, height: 60, position: 'absolute', right: 0, top: '12%' }} onPress={this.zoomIn} />
+          <TouchableOpacity style={{ width: 60, height: 60, position: 'absolute', right: '17%', top: '12%' }} onPress={this.zoomOut} />
+          <TouchableOpacity style={{ position: 'absolute', top: 26, left: 3 }} onPressOut={() => this.setState({ ...this.state, storyFeed: true })}>
+            <Text style={{ color: 'white' }}>{'HTBS\nStoryFeed'}</Text>
+          </TouchableOpacity>
         </View>
       </Animated.View>
-    )
+    ) : <StoryFeed onExitStoryFeed={() => this.setState({ ...this.state, storyFeed: false })} />
   }
 }
 
