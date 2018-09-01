@@ -4,6 +4,7 @@ import AssetUtils from 'expo-asset-utils'
 import { StyleSheet, Text, TouchableOpacity, View, Image, CameraRoll, ImageStore } from 'react-native'
 import { cameraVert, cameraFrag } from './cameraShaders';
 import PublishToFeedModal from './PublishToFeedModal'
+import { StoryFeed } from './StoryScreen';
 
 const Dropbox = require('dropbox').Dropbox
 
@@ -22,7 +23,7 @@ class GLCameraScreen extends React.Component {
   private _time: number = 0.0
   private _logo: any
 
-  state = { zoom: 0, type: Camera.Constants.Type.back, publishModalOpen: false, imgUri: null }
+  state = { zoom: 0, type: Camera.Constants.Type.back, publishModalOpen: false, imgUri: null, storyFeed: false }
 
   componentWillUnmount() {
     cancelAnimationFrame(this._rafID)
@@ -160,7 +161,7 @@ class GLCameraScreen extends React.Component {
   ref(refName: string) { return ref => this[refName] = ref }
 
   render() {
-    return (
+    return !this.state.storyFeed ? (
       <View style={styles.container}>
         <Camera
           style={{ width: 0, height: 0 }}
@@ -186,8 +187,11 @@ class GLCameraScreen extends React.Component {
         <View style={styles.buttons}>
           <TouchableOpacity style={styles.button} onPress={this.takePicture} />
         </View>
+        <TouchableOpacity style={{position: 'absolute', top: 26, left: 3}} onPressOut={() => this.setState({...this.state, storyFeed: true})}>
+          <Text style={{  color: 'white' }}>{'HTBS\nStoryFeed'}</Text>
+        </TouchableOpacity>
       </View>
-    )
+    ) : <StoryFeed onExitStoryFeed={() => this.setState({...this.state, storyFeed: false})}/>
   }
 }
 
