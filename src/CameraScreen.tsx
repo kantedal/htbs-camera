@@ -1,30 +1,26 @@
-import { Camera, Permissions, FileSystem } from 'expo'
+import { Camera, FileSystem, Permissions } from 'expo'
 import { GLSL, Node, Shaders } from 'gl-react'
 import * as GLView from 'gl-react-expo'
+import * as React from 'react'
+import { Component } from 'react'
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  Image,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+
 const Dropbox = require('dropbox').Dropbox
 
 const dbx = new Dropbox({
   accessToken:
     'F9G1jrnCvJ0AAAAAAAAE-NQBkQDS1HiGPGDIAhc-wW0hgJ37HQ7hbSpqmQTQAwDF',
-    fetch: fetch
+  fetch: fetch
 })
-import * as React from 'react'
-import { Component } from 'react'
-import { Image, Text, TouchableOpacity, View } from 'react-native'
-import {
-  Animated,
-  ActivityIndicator,
-  Alert,
-  Image,
-  Text,
-  View,
-  TouchableOpacity,
-  Easing
-} from "react-native";
-
-const Camera2: any = Camera;
-
-const gui = require("./gui.png");
 
 interface State {
   analyzingPerson: boolean
@@ -70,7 +66,7 @@ export class CameraScreen extends Component<{}, State> {
       cameraType: "back",
       flashActive: false,
       hasPermissionToCamera: undefined,
-      path: "",
+      path: null,
       spinDegree: new Animated.Value(0),
       showBusinessAssociateLoading: false
     };
@@ -90,14 +86,18 @@ export class CameraScreen extends Component<{}, State> {
 
   private onLayout = event => this.start();
 
-  private refreshPic = () => {
-    this._camera
-      .capture({
-        jpegQuality: 70,
-        target: Camera2.Constants.CaptureTarget.temp
-      })
-      .then(data => this.setState({ path: data.path }))
-      .catch(err => console.log(err))
+  private refreshPic = async () => {
+    if (this._camera) {
+      try {
+        const photo = await this._camera.takePictureAsync({ quality: 0.05, base64: false, exif: false })
+        console.log(photo.uri)
+        this.setState({ path: photo.uri })
+      } catch (e) {
+        console.log(e)
+      }
+    }
+
+    requestAnimationFrame(this.refreshPic)
   }
   private uploadPhotoToStoryFeed = async (photo, text) => {
     const filename = Date.now() + '.jpg'
@@ -107,14 +107,12 @@ export class CameraScreen extends Component<{}, State> {
       //contents: JSON.stringify(photo)
       //contents: "data:image/jpeg;base64," + photo.base64
       contents: `${text}###${photo.base64}`
-
     })
-
   }
-  private takePicture = async () => await this._camera.takePictureAsync({base64: true, quality: 0.1})
+  private takePicture = async () => await this._camera.takePictureAsync({ base64: true, quality: 0.1 })
 
-  private start() {
-    this._timer = setInterval(() => this.refreshPic(), 5);
+  private async start() {
+    setTimeout(() => this.refreshPic(), 100)
   }
 
   public async componentWillMount() {
@@ -153,14 +151,14 @@ export class CameraScreen extends Component<{}, State> {
           ]
         }}
       >
-        <Camera2
+        <Camera
           style={{ flex: 1 }}
           type={this.state.cameraType}
           ref={cam => this._camera = cam}
           onFacesDetected={() => this.analyzePerson()}
           flashMode={this.state.flashActive ? FlashMode.on : FlashMode.off}
-        // captureQuality={Camera2.Constants.CaptureQuality['720p']}
-        // aspect={Camera2.Constants.Aspect.fill}
+        // captureQuality={Camera.Constants.CaptureQuality['720p']}
+        // aspect={Camera.Constants.Aspect.fill}
         >
           <View
             style={{
@@ -173,10 +171,10 @@ export class CameraScreen extends Component<{}, State> {
               style={{ width: "100%", height: "100%", position: "absolute" }}
               source={{ uri: "https://i.imgur.com/qTfJq6h.png" }}
             />
-            <View style={{position: 'absolute', bottom: 0, width: '100%', height: 65, justifyContent: 'center', alignItems: 'center'}}>
+            <View style={{ position: 'absolute', bottom: 0, width: '100%', height: 65, justifyContent: 'center', alignItems: 'center' }}>
               <TouchableOpacity
-                onPress={async () => this.uploadPhotoToStoryFeed(await this.takePicture(), "Test")} 
-                style={{width: 160, height: 65, position: 'absolute' }}
+                onPress={async () => this.uploadPhotoToStoryFeed(await this.takePicture(), "Test")}
+                style={{ width: 160, height: 65, position: 'absolute' }}
               />
             </View>
             <TouchableOpacity
@@ -243,7 +241,7 @@ export class CameraScreen extends Component<{}, State> {
               </Text>
             </View>
           </View>
-        </Camera2>
+        </Camera>
         {/* <GLView.Surface style={{ width: 100, height: 100 }}>
             <Node shader={shaders.Saturate} uniforms={{ contrast: 1, saturation: 2, brightness: 1, t: { uri: 'https://i.imgur.com/uTP9Xfr.jpg' } }} />
           </GLView.Surface> */}
@@ -255,22 +253,22 @@ export class CameraScreen extends Component<{}, State> {
     const poll = Math.random();
     if (poll < 0.15) {
       Alert.alert(
-        "Thank you for using HTBS caemra! GET PREMIUM",
-        "To get even better features, support, and accelerated business-as-a-platform cloud based evolution solution advice, consider buying Premium! ",
+        'Thank you for using HTBS caemra! GET PREMIUM',
+        'To get even better features, support, and accelerated business-as-a-platform cloud based evolution solution advice, consider buying Premium! ',
         [
           {
-            text: "Ask me later",
-            onPress: () => console.log("Ask me later pressed")
+            text: 'Ask me later',
+            onPress: () => console.log('Ask me later pressed')
           },
           {
-            text: "Cancel",
-            onPress: () => console.log("Cancel Pressed"),
-            style: "cancel"
+            text: 'Cancel',
+            onPress: () => console.log('Cancel Pressed'),
+            style: 'cancel'
           },
           {
-            text: "Scalable Cancel",
-            onPress: () => console.log("OK Pressed"),
-            style: "cancel"
+            text: 'Scalable Cancel',
+            onPress: () => console.log('OK Pressed'),
+            style: 'cancel'
           }
         ],
         { cancelable: false }
@@ -318,7 +316,7 @@ export class CameraScreen extends Component<{}, State> {
         //   ? Camera.Constants.Type.front
         //   : Camera.Constants.Type.back
         spinDegree: new Animated.Value(0),
-        cameraType: this.state.cameraType === "back" ? "front" : "back"
+        cameraType: this.state.cameraType === 'back' ? 'front' : 'back'
       });
     }, 1000);
 
