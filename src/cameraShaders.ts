@@ -11,8 +11,8 @@ export const cameraVert = `#version 300 es
 
 export const cameraFrag = `#version 300 es
   precision highp float;
-  uniform sampler2D cameraTexture;
   uniform sampler2D htbsLogo;
+  uniform sampler2D cameraTexture;
   uniform float time;
   in vec2 uv;
   out vec4 fragColor;
@@ -83,17 +83,29 @@ export const cameraFrag = `#version 300 es
     float noiseX = snoise(newUv * 1.8 - 20.0 + time * 0.1) * 0.005;
     float noiseY = snoise(newUv * 2.0 + 30.0 + time * 0.1) * 0.002;
     newUv = vec2(newUv.x + noiseX, newUv.y + noiseY);
-
+    
     float r = texture(cameraTexture, vec2((newUv.x - 0.5) * 0.5 + 0.5 + 0.001 * sin(time), newUv.y - 0.002)).r;
     float g = texture(cameraTexture, vec2((newUv.x - 0.5) * 0.5 + 0.5 - 0.001, newUv.y + 0.001 * cos(time + 2.1))).g;
     float b = texture(cameraTexture, vec2((newUv.x - 0.5) * 0.5 + 0.5, newUv.y)).b;
+
     // clr.r = clr.r * 1.2;
     // clr.g = clr.g * 1.0;
     // clr.b = clr.b * 0.9;
 
-    vec3 newClr = vec3(floor(r * 10.0), floor(g * 10.0), floor(b * 10.0)) / 10.0; 
+    float intesityLevels = 15.0;
+    vec3 newClr = vec3(floor(r * intesityLevels), floor(g * intesityLevels), floor(b * intesityLevels)) / intesityLevels; 
 
-    vec4 logo = texture(htbsLogo, uv);
-    fragColor = vec4(newClr, 1.0); // + logo;
+    float cosFactor = 0.4;
+    float sinFactor = 0.4;
+    vec2 logoUV = vec2((1.0 - uv.x) * 4.0, uv.y * 8.0) * mat2(cosFactor, sinFactor, -sinFactor, cosFactor);
+    vec4 logo = texture(htbsLogo, logoUV);
+    if (logo.g == 1.0) {
+      logo = vec4(0.0);
+    } else {
+      logo = vec4(vec3(logo.r) * 0.07, 0.1);
+    }
+
+    fragColor = vec4(newClr, 1.0) + logo;
+    //fragColor = texture(cameraTexture, uv);
   }
 `
