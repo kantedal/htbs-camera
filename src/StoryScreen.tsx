@@ -21,7 +21,11 @@ export class StoryFeed extends Component<any, State> {
     this.state = { currentStoryFeed: 0, allStoryFeeds: [], photo: null, text: null }
     dbx.filesListFolder({ path: '' })
       .then((response) => {
-        const results = response.entries.reverse()
+        let results = response.entries.reverse()
+        results = results.filter(r => {
+          let fileDate = new Date(r.client_modified)
+          return (Date.now() - fileDate.getTime()) / 1000 / 60 / 60 / 24 < 1
+        })
         this.setState({ ...this.state, allStoryFeeds: results })
         this.getStoryFeed(results[0])
       })
@@ -34,6 +38,7 @@ export class StoryFeed extends Component<any, State> {
   }
   getStoryFeed = async (storyObject) => {
     const uri = storyObject.path_display
+    console.log(storyObject)
 
     const shareObject = await dbx.sharingCreateSharedLink({ path: uri })
     const photo = await fetch(shareObject.url.replace('dl=0', 'dl=1'))
