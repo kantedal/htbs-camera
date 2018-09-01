@@ -21,6 +21,7 @@ class PublishToFeedModal extends React.Component<PublishToFeedModal.Props, Publi
       <Modal animationType={'slide'} transparent={true} visible={this.props.open}>
         <View style={{ justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 5 }}>
           <View style={{ backgroundColor: '#fff', width: 300, height: 200, padding: 10, flexDirection: 'column' }}>
+            <Text style={{ fontSize: 20 }}>Image saved to camera roll!</Text>
             <Text style={{ fontSize: 20 }}>Publish to HTBS Story Feed?</Text>
 
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

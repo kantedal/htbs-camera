@@ -40,6 +40,36 @@ class GLCameraScreen extends React.Component {
     return this.glView.createCameraTextureAsync(this.camera)
   }
 
+  async createTextureFromAsset(asset) {
+    var gl
+    var tex
+    var texData
+    var img
+
+    gl = this.gl
+    tex = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, tex)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]))
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+
+    texData = {
+      width: 1,
+      height: 1,
+      texture: tex,
+    }
+
+    texData.width = asset.width
+    texData.height = asset.height
+
+    gl.bindTexture(gl.TEXTURE_2D, texData.texture)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, asset)
+
+    return (texData)
+  }
+
   onContextCreate = async gl => {
     this.gl = gl
     // Create texture asynchronously
@@ -84,21 +114,13 @@ class GLCameraScreen extends React.Component {
 
     this._logo = Asset.fromModule(require('./htbs.png'))
     await this._logo.downloadAsync()
+    console.log(this._logo)
 
-    const texture = gl.createTexture()
-    gl.bindTexture(gl.TEXTURE_2D, texture)
-
-    // Set the parameters so we can render any size image.
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-
-    // Upload the image into the texture.
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this._logo)
+    const texData = await this.createTextureFromAsset(this._logo)
 
     // Activate unit 0
     gl.activeTexture(gl.TEXTURE0)
+    // gl.activeTexture(gl.TEXTURE1)
 
     // Render loop
     const loop = () => {
@@ -107,7 +129,14 @@ class GLCameraScreen extends React.Component {
       gl.clearColor(0, 0, 1, 1)
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
+      // gl.bindTexture(gl.TEXTURE_2D, texData.texture)
+      gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, cameraTexture)
+
+      gl.activeTexture(gl.TEXTURE1)
+      gl.bindTexture(gl.TEXTURE_2D, texData.texture)
+      // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, asset)
+      // gl.bindTexture(gl.TEXTURE_2D, this._logo)
       // gl.bindTexture(gl.TEXTURE_2D, this._logo)
       gl.uniform1f(timeLoc, this._time)
 
@@ -187,11 +216,14 @@ class GLCameraScreen extends React.Component {
         <View style={styles.buttons}>
           <TouchableOpacity style={styles.button} onPress={this.takePicture} />
         </View>
-        <TouchableOpacity style={{position: 'absolute', top: 26, left: 3}} onPressOut={() => this.setState({...this.state, storyFeed: true})}>
-          <Text style={{  color: 'white' }}>{'HTBS\nStoryFeed'}</Text>
+
+        <TouchableOpacity style={{ width: 60, height: 60, position: 'absolute', right: 0, top: '12%' }} onPress={this.zoomIn} />
+        <TouchableOpacity style={{ width: 60, height: 60, position: 'absolute', right: '17%', top: '12%' }} onPress={this.zoomOut} />
+        <TouchableOpacity style={{ position: 'absolute', top: 26, left: 3 }} onPressOut={() => this.setState({ ...this.state, storyFeed: true })}>
+          <Text style={{ color: 'white' }}>{'HTBS\nStoryFeed'}</Text>
         </TouchableOpacity>
       </View>
-    ) : <StoryFeed onExitStoryFeed={() => this.setState({...this.state, storyFeed: false})}/>
+    ) : <StoryFeed onExitStoryFeed={() => this.setState({ ...this.state, storyFeed: false })} />
   }
 }
 
