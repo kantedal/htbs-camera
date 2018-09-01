@@ -1,7 +1,8 @@
 import React from 'react'
 import { Camera, GLView, Permissions, Asset } from 'expo'
 import AssetUtils from 'expo-asset-utils'
-import { StyleSheet, Text, TouchableOpacity, View, Image, CameraRoll, ImageStore, Alert } from 'react-native'
+
+import { StyleSheet, Text, TouchableOpacity, View, Image, CameraRoll, ImageStore, Animated, Easing, RecyclerViewBackedScrollViewComponent, Alert } from 'react-native'
 import { cameraVert, cameraFrag } from './cameraShaders';
 import PublishToFeedModal from './PublishToFeedModal'
 import { StoryFeed } from './StoryScreen';
@@ -23,14 +24,74 @@ class GLCameraScreen extends React.Component {
   private _time: number = 0.0
   private _logo: any
 
-  state = { analyzingPerson: false, zoom: 0, type: Camera.Constants.Type.back, publishModalOpen: false, imgUri: null, storyFeed: false }
+  state = {
+    zoom: 0,
+    type: Camera.Constants.Type.back,
+    publishModalOpen: false,
+    imgUri: null,
+    storyFeed: false,
+    spinAnim: new Animated.Value(0),
+    explosionAnim: new Animated.Value(0),
+    analyzingPerson: false,
+  }
 
   componentWillUnmount() {
     cancelAnimationFrame(this._rafID)
   }
 
+  flipUi = () => {
+    return new Promise((resolve, reject) => {
+      Animated.timing(
+        // Animate over time
+        this.state.spinAnim, // The animated value to drive
+        {
+          toValue: 1, // Animate to opacity: 1 (opaque)
+          duration: 1000, // Make it take a while
+          easing: Easing.back(1),
+          useNativeDriver: true
+        }
+      ).start((animation) => {
+        if (animation.finished) {
+          resolve()
+        }
+      }) // Starts the animation
+    }).then(() => this.setState({
+      spinAnim: new Animated.Value(0)
+    }))
+  };
+
+  cameraExplosion = () => {
+    return new Promise((resolve, reject) => {
+      Animated.timing(
+        // Animate over time
+        this.state.explosionAnim, // The animated value to drive
+        {
+          toValue: 1, // Animate to opacity: 1 (opaque)
+          duration: 600, // Make it take a while
+          easing: Easing.elastic(4),
+          useNativeDriver: true
+        }
+      ).start((animation) => {
+        if (animation.finished) {
+          Animated.timing(
+            // Animate over time
+            this.state.explosionAnim, // The animated value to drive
+            {
+              toValue: 0, // Animate to opacity: 1 (opaque)
+              duration: 400, // Make it take a while
+              useNativeDriver: true
+            }
+          ).start((animation) => {
+            resolve()
+          })
+        }
+      }); // Starts the animation
+    })
+  };
+
   async createCameraTexture() {
     const { status } = await Permissions.askAsync(Permissions.CAMERA)
+    const cameraRoll = await Permissions.askAsync(Permissions.CAMERA_ROLL)
 
     if (!status) {
       console.log('Denied camera permissions!')
@@ -114,7 +175,6 @@ class GLCameraScreen extends React.Component {
 
     this._logo = Asset.fromModule(require('./htbs.png'))
     await this._logo.downloadAsync()
-    console.log(this._logo)
 
     const texData = await this.createTextureFromAsset(this._logo)
 
@@ -151,86 +211,128 @@ class GLCameraScreen extends React.Component {
   }
 
   toggleFacing = () => {
-    this.setState({
-      type: this.state.type === Camera.Constants.Type.back
-        ? Camera.Constants.Type.front
-        : Camera.Constants.Type.back,
-    })
+    this.flipUi().then(() => {
+      this.setState({
+        type: this.state.type === Camera.Constants.Type.back
+          ? Camera.Constants.Type.front
+          : Camera.Constants.Type.back,
+      })
+    }).catch(() => { })
   }
 
   zoomOut = () => this.setState({ zoom: this.state.zoom - 0.1 < 0 ? 0 : this.state.zoom - 0.1 })
   zoomIn = () => this.setState({ zoom: this.state.zoom + 0.1 > 1 ? 1 : this.state.zoom + 0.1 })
 
   private uploadPhotoToStoryFeed = async (uri, text) => {
-    const base64 = await AssetUtils.base64forImageUriAsync(uri)
-    const filename = Date.now() + '.phext'
-    dbx.filesUpload({
-      path: '/' + filename,
-      contents: `${text}###${base64.data}`
-    })
+    if (text !== '' && text != null) {
+      const base64 = await AssetUtils.base64forImageUriAsync(uri)
+      const filename = Date.now() + '.phext'
+      dbx.filesUpload({ path: '/' + filename, contents: `${text}###${base64.data}` })
+    }
   }
 
   takePicture = async () => {
+    this.cameraExplosion().catch(() => { })
     const test: any = GLView
     const image = await test.takeSnapshotAsync(this.gl, { compress: 0 })
     const saveResult = await CameraRoll.saveToCameraRoll(image.uri, 'photo')
     // this.uploadPhotoToStoryFeed(image.uri, 'Sug en fet')
 
-    this.getCustomers()
     this.setState({ publishModalOpen: true, imgUri: image.uri })
-
-    this.setState({ cameraRollUri: saveResult })
   }
 
-  cancelPublish = () => this.setState({ publishModalOpen: false, imgUri: null })
+  cancelPublish = () => {
+    this.setState({ publishModalOpen: false, imgUri: null })
+    setTimeout(() => this.getCustomers(), 2000)
+  }
   publish = (text: string) => {
     this.uploadPhotoToStoryFeed(this.state.imgUri, text)
     this.setState({ publishModalOpen: false })
+    setTimeout(() => this.getCustomers(), 2000)
   }
 
   ref(refName: string) { return ref => this[refName] = ref }
 
   render() {
     return !this.state.storyFeed ? (
-      <View style={styles.container}>
-        <Camera
-          style={{ width: 0, height: 0 }}
-          ratio='16:9'
-          type={this.state.type}
-          zoom={this.state.zoom}
-          // onFacesDetected={this.analyzePerson}
-          ref={this.ref('camera')}
-        />
+      <Animated.View style={{
+        display: 'flex',
+        flex: 1,
+        transform: [{
+          rotateX: this.state.spinAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['0deg', '360deg'],
+          })
+        }]
+      }}
+      >
+        <View style={styles.container}>
+          <Camera
+            style={{ width: 0, height: 0 }}
+            ratio='16:9'
+            type={this.state.type}
+            zoom={this.state.zoom}
+            ref={this.ref('camera')}
+          />
 
-        <GLView
-          style={{ position: 'absolute', top: 0, width: '100%', height: '100%', }}
-          onContextCreate={this.onContextCreate}
-          ref={this.ref('glView')}
-        />
+          <GLView
+            style={{ position: 'absolute', top: 0, width: '100%', height: '100%', }}
+            onContextCreate={this.onContextCreate}
+            ref={this.ref('glView')}
+          />
 
-        <Image
-          style={{ width: '100%', height: '100%', position: 'absolute' }}
-          source={{ uri: 'https://i.imgur.com/qTfJq6h.png' }}
-        />
+          <PublishToFeedModal open={this.state.publishModalOpen} cancel={this.cancelPublish} publish={this.publish} />
 
-        <PublishToFeedModal open={this.state.publishModalOpen} cancel={this.cancelPublish} publish={this.publish} />
+          <Animated.View
+            pointerEvents='none'
+            style={{
+              position: 'absolute',
+              height: 200,
+              width: 200,
+              zIndex: 10,
+              bottom: 0,
+              left: '50%',
+              opacity: this.state.explosionAnim,
+              transform: [
+                { translateX: -100 },
+              ]
+            }}
+          >
+            <Image
+              style={{ width: '100%', height: '100%' }}
+              source={{ uri: 'https://vignette.wikia.nocookie.net/yandere-simulator/images/e/e9/COOL_EXPLOSION.gif/revision/latest?cb=20160419224508' }}
+            />
+          </Animated.View>
 
-        <View style={styles.buttons}>
-          <TouchableOpacity style={styles.button} onPress={this.takePicture} />
+          <Image
+            style={{ width: '100%', height: '100%', position: 'absolute' }}
+            source={{ uri: 'https://i.imgur.com/qTfJq6h.png' }}
+          />
+
+          <PublishToFeedModal open={this.state.publishModalOpen} cancel={this.cancelPublish} publish={this.publish} />
+
+          <View style={styles.buttons}>
+            <TouchableOpacity style={styles.button} onPress={this.takePicture} />
+          </View>
+
+          <TouchableOpacity style={{ width: 60, height: 60, position: 'absolute', right: 0, top: '12%' }} onPress={this.zoomIn} />
+          <TouchableOpacity style={{ width: 60, height: 60, position: 'absolute', right: '17%', top: '12%' }} onPress={this.zoomOut} />
+          <TouchableOpacity style={{ position: 'absolute', top: 26, left: 3 }} onPressOut={() => this.setState({ ...this.state, storyFeed: true })}>
+            <Text style={{ color: 'white' }}>{'HTBS\nStoryFeed'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={{ width: 60, height: 60, position: 'absolute', left: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }} onPress={this.toggleFacing}>
+            <Text style={{ color: '#fff', fontSize: 20 }}>Flip camera</Text>
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={{ width: 60, height: 60, position: 'absolute', right: 0, top: '12%' }} onPress={this.zoomIn} />
-        <TouchableOpacity style={{ width: 60, height: 60, position: 'absolute', right: '17%', top: '12%' }} onPress={this.zoomOut} />
-        <TouchableOpacity style={{ position: 'absolute', top: 26, left: 3 }} onPressOut={() => this.setState({ ...this.state, storyFeed: true })}>
-          <Text style={{ color: 'white' }}>{'HTBS\nStoryFeed'}</Text>
-        </TouchableOpacity>
-      </View>
+      </Animated.View >
     ) : <StoryFeed onExitStoryFeed={() => this.setState({ ...this.state, storyFeed: false })} />
   }
 
   private getCustomers() {
     const poll = Math.random()
-    if (poll < 0.15) {
+    console.log(poll)
+    if (poll < 0.4) {
       Alert.alert(
         'Thank you for using HTBS caemra! GET PREMIUM',
         'To remove watermarks, get even better features, support, and accelerated business-as-a-platform cloud based evolution solution advice, consider buying Premium! ',

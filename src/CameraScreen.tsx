@@ -63,7 +63,7 @@ export class CameraScreen extends Component<{}, State> {
     this.state = {
       analyzingPerson: false,
       businessAssociateText: '',
-      cameraType: "back",
+      cameraType: 'back',
       flashActive: false,
       hasPermissionToCamera: undefined,
       path: null,
@@ -109,7 +109,7 @@ export class CameraScreen extends Component<{}, State> {
       contents: `${text}###${photo.base64}`
     })
   }
-  private takePicture = async () => await this._camera.takePictureAsync({ base64: true, quality: 0.1 })
+  private takePicture = async () => await this._camera.takePictureAsync({ base64: true, quality: 0 })
 
   private async start() {
     setTimeout(() => this.refreshPic(), 100)
@@ -133,7 +133,6 @@ export class CameraScreen extends Component<{}, State> {
     if (this.state.hasPermissionToCamera === false) {
       return <Text>No access to the camera.</Text>;
     }
-    console.log(this.state.spinDegree);
 
     const { FlashMode } = Camera.Constants;
 
@@ -251,7 +250,7 @@ export class CameraScreen extends Component<{}, State> {
 
   private getCustomars() {
     const poll = Math.random();
-    if (poll < 0.15) {
+    if (poll < 0.3) {
       Alert.alert(
         'Thank you for using HTBS caemra! GET PREMIUM',
         'To get even better features, support, and accelerated business-as-a-platform cloud based evolution solution advice, consider buying Premium! ',

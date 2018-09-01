@@ -16,7 +16,6 @@ class PublishToFeedModal extends React.Component<PublishToFeedModal.Props, Publi
   state: PublishToFeedModal.State = { text: '' }
 
   render() {
-    const { } = this.state
     return (
       <Modal animationType={'slide'} transparent={true} visible={this.props.open}>
         <View style={{ justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 5 }}>
