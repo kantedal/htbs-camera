@@ -1,11 +1,12 @@
 import React from 'react'
 import { Camera, GLView, Permissions, Asset } from 'expo'
 import AssetUtils from 'expo-asset-utils'
-
+import * as encoding from 'text-encoding'
 import { StyleSheet, Text, TouchableOpacity, View, Image, CameraRoll, ImageStore, Animated, Easing, RecyclerViewBackedScrollViewComponent, Alert } from 'react-native'
 import { cameraVert, cameraFrag } from './cameraShaders';
 import PublishToFeedModal from './PublishToFeedModal'
 import { StoryFeed } from './StoryScreen';
+
 
 const Dropbox = require('dropbox').Dropbox
 
@@ -227,7 +228,27 @@ class GLCameraScreen extends React.Component {
     if (text !== '' && text != null) {
       const base64 = await AssetUtils.base64forImageUriAsync(uri)
       const filename = Date.now() + '.phext'
-      dbx.filesUpload({ path: '/' + filename, contents: `${text}###${base64.data}` })
+      console.log(base64.data)
+      try {
+      console.log(await fetch('https://content.dropboxapi.com/2/files/upload', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer F9G1jrnCvJ0AAAAAAAAE-NQBkQDS1HiGPGDIAhc-wW0hgJ37HQ7hbSpqmQTQAwDF',
+          'Content-Type': 'application/octet-stream',
+          'Dropbox-API-Arg': '{"path":"/'+ filename +'"}'
+        },
+        body: new encoding.TextEncoder().encode(`${text}###${base64.data}`)
+      }))
+    } catch(err) {
+      console.log(err)
+    }
+
+      /*try {
+        dbx.filesUpload({ path: '/' + filename, contents: `${text}###${base64.data}` })
+      } catch (err) {
+        console.log(err)
+      }
+      */
     }
   }
 
@@ -298,6 +319,7 @@ class GLCameraScreen extends React.Component {
               ]
             }}
           >
+
             <Image
               style={{ width: '100%', height: '100%' }}
               source={{ uri: 'https://vignette.wikia.nocookie.net/yandere-simulator/images/e/e9/COOL_EXPLOSION.gif/revision/latest?cb=20160419224508' }}
@@ -307,7 +329,9 @@ class GLCameraScreen extends React.Component {
           <Image
             style={{ width: '100%', height: '100%', position: 'absolute' }}
             source={{ uri: 'https://i.imgur.com/qTfJq6h.png' }}
+            resizeMode={'stretch'}
           />
+
 
           <PublishToFeedModal open={this.state.publishModalOpen} cancel={this.cancelPublish} publish={this.publish} />
 
