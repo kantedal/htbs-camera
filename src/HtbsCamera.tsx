@@ -11,8 +11,7 @@ import { StoryFeed } from './StoryScreen';
 const Dropbox = require('dropbox').Dropbox
 
 const dbx = new Dropbox({
-  accessToken:
-    'F9G1jrnCvJ0AAAAAAAAE-NQBkQDS1HiGPGDIAhc-wW0hgJ37HQ7hbSpqmQTQAwDF',
+  accessToken: 'F9G1jrnCvJ0AAAAAAAAE-NQBkQDS1HiGPGDIAhc-wW0hgJ37HQ7hbSpqmQTQAwDF',
   fetch: fetch
 })
 
@@ -22,11 +21,11 @@ class GLCameraScreen extends React.Component {
   private camera: any
   private texture: any
   private _rafID: any
-  private _time: number = 0.0
+  private _time: number = 0
   private _logo: any
 
   state = {
-    zoom: 0,
+    zoom: 1,
     type: Camera.Constants.Type.back,
     publishModalOpen: false,
     imgUri: null,
@@ -156,6 +155,7 @@ class GLCameraScreen extends React.Component {
     gl.useProgram(program)
 
     const timeLoc = gl.getUniformLocation(program, 'time')
+    const zoomLoc = gl.getUniformLocation(program, 'zoom')
 
     const positionAttrib = gl.getAttribLocation(program, 'position')
     gl.enableVertexAttribArray(positionAttrib)
@@ -194,12 +194,17 @@ class GLCameraScreen extends React.Component {
       gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, cameraTexture)
 
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+
       gl.activeTexture(gl.TEXTURE1)
       gl.bindTexture(gl.TEXTURE_2D, texData.texture)
       // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, asset)
       // gl.bindTexture(gl.TEXTURE_2D, this._logo)
       // gl.bindTexture(gl.TEXTURE_2D, this._logo)
       gl.uniform1f(timeLoc, this._time)
+      gl.uniform1f(zoomLoc, this.state.zoom)
 
       // Draw!
       gl.drawArrays(gl.TRIANGLES, 0, verts.length / 2)
@@ -221,8 +226,8 @@ class GLCameraScreen extends React.Component {
     }).catch(() => { })
   }
 
-  zoomOut = () => this.setState({ zoom: this.state.zoom - 0.1 < 0 ? 0 : this.state.zoom - 0.1 })
-  zoomIn = () => this.setState({ zoom: this.state.zoom + 0.1 > 1 ? 1 : this.state.zoom + 0.1 })
+  zoomOut = () => this.setState({ zoom: this.state.zoom + 0.1 })
+  zoomIn = () => this.setState({ zoom: this.state.zoom - 0.1 })
 
   private uploadPhotoToStoryFeed = async (uri, text) => {
     if (text !== '' && text != null) {
@@ -266,6 +271,7 @@ class GLCameraScreen extends React.Component {
     this.setState({ publishModalOpen: false, imgUri: null })
     setTimeout(() => this.getCustomers(), 2000)
   }
+
   publish = (text: string) => {
     this.uploadPhotoToStoryFeed(this.state.imgUri, text)
     this.setState({ publishModalOpen: false })
@@ -292,7 +298,7 @@ class GLCameraScreen extends React.Component {
             style={{ width: 0, height: 0 }}
             ratio='16:9'
             type={this.state.type}
-            zoom={this.state.zoom}
+            // zoom={this.state.zoom}
             ref={this.ref('camera')}
           />
 
@@ -361,20 +367,9 @@ class GLCameraScreen extends React.Component {
         'Thank you for using HTBS caemra! GET PREMIUM',
         'To remove watermarks, get even better features, support, and accelerated business-as-a-platform cloud based evolution solution advice, consider buying Premium! ',
         [
-          {
-            text: 'Ask me later',
-            onPress: () => console.log('Ask me later pressed')
-          },
-          {
-            text: 'Cancel',
-            onPress: () => console.log('Cancel Pressed'),
-            style: 'cancel'
-          },
-          {
-            text: 'Scalable Cancel',
-            onPress: () => console.log('OK Pressed'),
-            style: 'cancel'
-          }
+          { text: 'Ask me later', onPress: () => console.log('Ask me later pressed') },
+          { text: 'Cancel', onPress: () => console.log('Cancel Pressed'), style: 'cancel' },
+          { text: 'Scalable Cancel', onPress: () => console.log('OK Pressed'), style: 'cancel' }
         ],
         { cancelable: false }
       );
