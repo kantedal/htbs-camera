@@ -1,7 +1,7 @@
 import React from 'react'
 import { Camera, GLView, Permissions, Asset } from 'expo'
 import AssetUtils from 'expo-asset-utils'
-import { StyleSheet, Text, TouchableOpacity, View, Image, CameraRoll, ImageStore } from 'react-native'
+import { StyleSheet, Text, TouchableOpacity, View, Image, CameraRoll, ImageStore, Animated, Easing, RecyclerViewBackedScrollViewComponent } from 'react-native'
 
 const vertShaderSource = `#version 300 es
   precision highp float;
@@ -112,11 +112,61 @@ class GLCameraScreen extends React.Component {
   private _time: number = 0.0
   private _logo: any
 
-  state = { zoom: 0, type: Camera.Constants.Type.back }
+  state = { zoom: 0, type: Camera.Constants.Type.back, spinAnim: new Animated.Value(0), explosionAnim: new Animated.Value(0) }
 
   componentWillUnmount() {
     cancelAnimationFrame(this._rafID)
   }
+
+  flipUi = () => {    
+    return new Promise((resolve, reject)=>{
+      Animated.timing(
+        // Animate over time
+        this.state.spinAnim, // The animated value to drive
+        {
+          toValue: 1, // Animate to opacity: 1 (opaque)
+          duration: 1000, // Make it take a while
+          easing: Easing.back(1),
+          useNativeDriver: true
+        }
+      ).start((animation)=>{
+        if(animation.finished) {
+          resolve()
+        }
+      }) // Starts the animation
+    }).then(()=>this.setState({
+      spinAnim: new Animated.Value(0)
+    }))
+  };
+
+  cameraExplosion = () => {    
+    return new Promise((resolve, reject)=>{
+      Animated.timing(
+        // Animate over time
+        this.state.explosionAnim, // The animated value to drive
+        {
+          toValue: 1, // Animate to opacity: 1 (opaque)
+          duration: 600, // Make it take a while
+          easing: Easing.elastic(4),
+          useNativeDriver: true
+        }
+      ).start((animation)=>{
+        if(animation.finished) {
+          Animated.timing(
+            // Animate over time
+            this.state.explosionAnim, // The animated value to drive
+            {
+              toValue: 0, // Animate to opacity: 1 (opaque)
+              duration: 400, // Make it take a while
+              useNativeDriver: true
+            }
+          ).start((animation)=>{
+            resolve()
+          })
+        }
+      }); // Starts the animation
+    })
+  };
 
   async createCameraTexture() {
     const { status } = await Permissions.askAsync(Permissions.CAMERA)
@@ -211,28 +261,33 @@ class GLCameraScreen extends React.Component {
   }
 
   toggleFacing = () => {
-    this.setState({
-      type: this.state.type === Camera.Constants.Type.back
-        ? Camera.Constants.Type.front
-        : Camera.Constants.Type.back,
-    })
+    this.flipUi().then(()=>{
+      this.setState({
+        type: this.state.type === Camera.Constants.Type.back
+          ? Camera.Constants.Type.front
+          : Camera.Constants.Type.back,
+      })
+    }).catch(()=>{})
   }
 
   zoomOut = () => this.setState({ zoom: this.state.zoom - 0.1 < 0 ? 0 : this.state.zoom - 0.1 })
   zoomIn = () => this.setState({ zoom: this.state.zoom + 0.1 > 1 ? 1 : this.state.zoom + 0.1 })
 
   takePicture = async () => {
-    const test: any = GLView
-    const image = await test.takeSnapshotAsync(this.gl, { compress: 0 })
-    const saveResult = await CameraRoll.saveToCameraRoll(image.uri, 'photo')
-    const base64 = AssetUtils.base64forImageUriAsync(image.uri)
-    console.log(base64)
-    // ImageStore.getBase64ForTag(image.uri, (data) => {
-    //   console.log('hej')
-    //   console.log(data)
-    // }, e => console.warn('getBase64ForTag: ', e))
+    console.log("take picture")
+    this.cameraExplosion().then(async ()=>{
+      const test: any = GLView
+      const image = await test.takeSnapshotAsync(this.gl, { compress: 0 })
+      const saveResult = await CameraRoll.saveToCameraRoll(image.uri, 'photo')
+      const base64 = AssetUtils.base64forImageUriAsync(image.uri)
+      console.log(base64)
+      // ImageStore.getBase64ForTag(image.uri, (data) => {
+      //   console.log('hej')
+      //   console.log(data)
+      // }, e => console.warn('getBase64ForTag: ', e))
 
-    this.setState({ cameraRollUri: saveResult })
+      this.setState({ cameraRollUri: saveResult })
+    }).catch(()=>{})
   }
 
   ref(refName: string) {
@@ -243,35 +298,61 @@ class GLCameraScreen extends React.Component {
 
   render() {
     return (
-      <View style={styles.container}>
-        <Camera
-          style={{ width: 0, height: 0 }}
-          ratio='16:9'
-          type={this.state.type}
-          zoom={this.state.zoom}
-          ref={this.ref('camera')}
-        />
+      <Animated.View style={{display: "flex", flex: 1, transform: [
+        {
+          rotateX: this.state.spinAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: ["0deg", "360deg"]
+          })
+        }
+      ]}}>
+        <View style={styles.container}>
+          <Camera
+            style={{ width: 0, height: 0 }}
+            ratio='16:9'
+            type={this.state.type}
+            zoom={this.state.zoom}
+            ref={this.ref('camera')}
+          />
 
-        <GLView
-          style={{
-            position: 'absolute',
-            top: 0,
-            width: '100%',
-            height: '100%',
-          }}
-          onContextCreate={this.onContextCreate}
-          ref={this.ref('glView')}
-        />
+          <GLView
+            style={{
+              position: 'absolute',
+              top: 0,
+              width: '100%',
+              height: '100%',
+            }}
+            onContextCreate={this.onContextCreate}
+            ref={this.ref('glView')} 
+          />
 
-        <Image
-          style={{ width: '100%', height: '100%', position: 'absolute' }}
-          source={{ uri: 'https://i.imgur.com/qTfJq6h.png' }}
-        />
-
-        <View style={styles.buttons}>
-          <TouchableOpacity style={styles.button} onPress={this.takePicture} />
+          <Animated.View 
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              height: 200,
+              width: 200,
+              zIndex: 10,
+              bottom: 0,
+              left: "50%",
+              opacity: this.state.explosionAnim,
+              transform:[
+                { translateX: -100 }, 
+              ]
+            }}
+          >
+            <Image style={{ width: "100%", height: "100%"}} source={{ uri: "https://vignette.wikia.nocookie.net/yandere-simulator/images/e/e9/COOL_EXPLOSION.gif/revision/latest?cb=20160419224508"}}/>
+          </Animated.View>
+          
+            <Image
+              style={{ width: '100%', height: '100%', position: 'absolute' }}
+              source={{ uri: 'https://i.imgur.com/qTfJq6h.png' }}
+            />
+            <View style={styles.buttons}>
+              <TouchableOpacity style={styles.button} onPress={this.takePicture} />
+            </View>
         </View>
-      </View>
+      </Animated.View>
     )
   }
 }
