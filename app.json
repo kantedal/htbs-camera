@@ -27,6 +27,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.htbs.htbscamera",
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
